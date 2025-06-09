@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../../layouts/frontend/Navbar";
 import axios from "axios";
 import swal from "sweetalert";
+import Cookies from 'js-cookie';
 
 function Register() {
     const navigate = useNavigate();
@@ -19,33 +20,39 @@ function Register() {
     };
 
     const registerSubmit = (e) => {
-        e.preventDefault();
+    e.preventDefault();
 
-        const data = {
-            name: registerInput.name,
-            email: registerInput.email,
-            password: registerInput.password,
-        };
-
-        axios.get('/sanctum/csrf-cookie').then(() => {
-            axios.post('/api/register', data)
-                .then(res => {
-                    if (res.data.status === 200) {
-                        localStorage.setItem('auth_token', res.data.token);
-                        localStorage.setItem('auth_name', res.data.username);
-                        swal("Success", res.data.message, "success");
-                        navigate('/');
-                    } else {
-                        setRegister({ ...registerInput, error_list: res.data.validation_errors });
-                    }
-                })
-                .catch(error => {
-                    if (error.response && error.response.status === 422) {
-                        setRegister({ ...registerInput, error_list: error.response.data.errors });
-                    }
-                });
-        });
+    const data = {
+        name: registerInput.name,
+        email: registerInput.email,
+        password: registerInput.password,
     };
+
+    axios.get('/sanctum/csrf-cookie').then(() => {
+        const csrfToken = Cookies.get('XSRF-TOKEN'); // Récupère le token dans le cookie
+
+        axios.post('/api/register', data, {
+            headers: {
+                'X-XSRF-TOKEN': decodeURIComponent(csrfToken), // L’envoie manuellement
+            },
+        })
+        .then(res => {
+            if (res.data.status === 200) {
+                localStorage.setItem('auth_token', res.data.token);
+                localStorage.setItem('auth_name', res.data.username);
+                swal("Success", res.data.message, "success");
+                navigate('/');
+            } else {
+                setRegister({ ...registerInput, error_list: res.data.validation_errors });
+            }
+        })
+        .catch(error => {
+            if (error.response && error.response.status === 422) {
+                setRegister({ ...registerInput, error_list: error.response.data.errors });
+            }
+        });
+    });
+};
 
     return (
         <div>
