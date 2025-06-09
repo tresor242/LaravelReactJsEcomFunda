@@ -1,58 +1,75 @@
+// Importation des modules React, des hooks et bibliothèques nécessaires
 import React, { useState } from 'react';
-import Navbar from '../../../layouts/frontend/Navbar';
-import axios from 'axios';
-import swal from 'sweetalert';
-import { useNavigate } from 'react-router-dom';
-import Cookies from 'js-cookie'; // <-- Ajouté pour récupérer XSRF-TOKEN
+import Navbar from '../../../layouts/frontend/Navbar'; // Composant de navigation principal
+import axios from 'axios'; // Librairie pour les appels HTTP
+import swal from 'sweetalert'; // Librairie pour les alertes visuelles
+import { useNavigate } from 'react-router-dom'; // Hook pour la redirection
+import Cookies from 'js-cookie'; // Permet de lire le cookie contenant le token CSRF
 
+// Composant fonctionnel de connexion utilisateur
 function Login() {
-    const navigate = useNavigate();
+    const navigate = useNavigate(); // Hook pour naviguer vers d'autres pages
 
+    // État local pour gérer les champs du formulaire et les erreurs
     const [loginInput, setLogin] = useState({
         email: '',
         password: '',
-        error_list: {},
+        error_list: {}, // Contiendra les erreurs de validation (si existantes)
     });
 
+    // Fonction déclenchée à chaque changement dans les champs du formulaire
     const handleInput = (e) => {
         setLogin({ ...loginInput, [e.target.name]: e.target.value });
     };
 
+    // Fonction exécutée lors de la soumission du formulaire
     const loginSubmit = (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Empêche le rechargement de la page
 
+        // Données à envoyer à l'API
         const data = {
             email: loginInput.email,
             password: loginInput.password,
         };
 
-        // Appel au cookie CSRF, puis POST avec le token transmis
+        // Appel initial pour obtenir le cookie CSRF via Laravel Sanctum
         axios.get('/sanctum/csrf-cookie').then(() => {
+            // Récupération du token CSRF depuis le cookie
             const csrfToken = Cookies.get('XSRF-TOKEN');
 
+            // Envoi de la requête POST pour la connexion
             axios.post('/api/login', data, {
                 headers: {
-                    'X-XSRF-TOKEN': decodeURIComponent(csrfToken),
+                    'X-XSRF-TOKEN': decodeURIComponent(csrfToken), // Ajout du token dans les headers
                 },
-                withCredentials: true,
-            }).then(res => {
+                withCredentials: true, // Inclut les cookies dans la requête (important avec Sanctum)
+            })
+            .then(res => {
+                // Si l'utilisateur est authentifié avec succès
                 if (res.data.status === 200) {
                     localStorage.setItem('auth_token', res.data.token);
                     localStorage.setItem('auth_name', res.data.username);
                     swal("Success", res.data.message, "success");
-                    navigate('/');
-                } else if (res.data.status === 401) {
+                    navigate('/'); // Redirection vers la page d'accueil
+                }
+                // Si les identifiants sont incorrects
+                else if (res.data.status === 401) {
                     swal("Warning", res.data.message, "warning");
-                } else {
+                }
+                // Si des erreurs de validation sont retournées
+                else {
                     setLogin({ ...loginInput, error_list: res.data.validation_errors });
                 }
-            }).catch(err => {
+            })
+            .catch(err => {
+                // Gestion des erreurs réseau ou inattendues
                 swal("Erreur", "Une erreur est survenue lors de la connexion.", "error");
                 console.error(err);
             });
         });
     };
 
+    // Rendu du formulaire de connexion
     return (
         <div>
             <Navbar />
@@ -65,6 +82,7 @@ function Login() {
                             </div>
                             <div className="card-body">
                                 <form onSubmit={loginSubmit}>
+                                    {/* Champ email */}
                                     <div className="form-group mb-3">
                                         <label>Email ID</label>
                                         <input
@@ -79,6 +97,7 @@ function Login() {
                                         )}
                                     </div>
 
+                                    {/* Champ mot de passe */}
                                     <div className="form-group mb-3">
                                         <label>Password</label>
                                         <input
@@ -93,6 +112,7 @@ function Login() {
                                         )}
                                     </div>
 
+                                    {/* Bouton de connexion */}
                                     <div className="form-group mb-3">
                                         <button type="submit" className="btn btn-primary">Login</button>
                                     </div>
